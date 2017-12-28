@@ -263,20 +263,13 @@ def process_image(image):
 with open('undistortion_data.pkl', 'rb') as f:
     undistortion_data = pickle.load(f)
 
-# image = mpimg.imread('test_images/test1.jpg')
-# undistorted_image  = undistort(image, undistortion_data)
-# cv2.putText(undistorted_image, '34', (620, 620), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 4)
-# plt.imshow(undistorted_image)
-# plt.show()
-
-
-# Import everything needed to edit/save/watch video clips
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
 
 white_output = 'output_video/ftest_pl.mp4'
 
 clip1 = VideoFileClip("project_video.mp4")
+
 # VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,5)
 white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 
