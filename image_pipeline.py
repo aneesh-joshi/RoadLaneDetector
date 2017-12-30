@@ -61,29 +61,29 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
 
 def threshold(image):
 
+    Minv = image[1]
+    image = image[0]
+
     ksize = 3
 
-    s_channel = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)[:, :, 2]
-    l_channel = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)[:, :, 0]
+    hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
+    s_channel = hls[:, :, 2]
 
     gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(20, 100))
-    grady = abs_sobel_thresh(image, orient='y', sobel_kernel=ksize, thresh=(50, 100))
-    mag_binary = mag_thresh(image, sobel_kernel=ksize, mag_thresh=(30, 100))
-    dir_binary = dir_threshold(image, sobel_kernel=ksize, thresh=(0.7, 1.3))
-
+    
     gradx_s = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(20, 100))
-    grady_s = abs_sobel_thresh(s_channel, orient='y', sobel_kernel=ksize, thresh=(50, 100))
+    
     mag_binary_s = mag_thresh(s_channel, sobel_kernel=ksize, mag_thresh=(30, 100))
-    dir_binary_s = dir_threshold(s_channel, sobel_kernel=ksize, thresh=(0.7, 1.3))
+    
 
-    combined = np.zeros_like(dir_binary)
-    combined[((gradx == 1) | (gradx_s == 1) & (mag_binary_s == 1))] = 1
+    combined = np.zeros_like(gradx)
+    combined[((gradx == 1) | (gradx_s == 1) | (mag_binary_s == 1))] = 1
 
-    return combined
+    return combined, Minv
 
-def warp(image):
-    src = np.float32([[  575,  460 ],
-            [  685,  460 ],
+def warp(image):    
+    src = np.float32([[  595,  450 ],
+            [  685,  450 ],
             [ 1000,  660 ],
             [  280,  660 ]])
 
@@ -91,7 +91,6 @@ def warp(image):
             [  980,    0 ],
             [  980,  720 ],
             [  300,  720 ]])
-
     M = cv2.getPerspectiveTransform(src, dst)
     Minv = cv2.getPerspectiveTransform(dst, src)
     warped = cv2.warpPerspective(image, M, (image.shape[1], image.shape[0]), flags=cv2.INTER_LINEAR )
@@ -220,6 +219,8 @@ def get_curvature(image, Minv, undist):
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
+        history = [left_fit, right_fit]
+
         # Generate x and y values for plotting
         ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
         left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
@@ -291,17 +292,19 @@ with open('undistortion_data.pkl', 'rb') as f:
 
 def process_image(image):
 
-    warped_image, Minv = warp(threshold(undistort(image, undistortion_data)))
+    warped_image, Minv = threshold(warp(undistort(image, undistortion_data)))
 
     fin_image, curv_left, curv_right, offset_dist = get_curvature(warped_image, Minv, image)
-    fin_image = cv2.putText(fin_image, str(np.round(curv_left)) + 'm, ' + str(np.round(curv_right))  + 'm,' + str(np.round(offset_dist*10000)/10000) + 'm', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 4)    
+    fin_image = cv2.putText(fin_image, 'left ROC:' + str(np.round(curv_left)) + 'm', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)    
+    fin_image = cv2.putText(fin_image, 'right ROC:' + str(np.round(curv_right)) + 'm', (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
+    fin_image = cv2.putText(fin_image, 'lane offset:' + str(np.round(offset_dist*10000)/10000) + 'm', (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)    
     return fin_image
 
-for i in range(6):
-    image = mpimg.imread('test_images/straight_lines' + str(i+1) + '.jpg')
-    fin = process_image(image)
+# for i in range(8):
+#     image = mpimg.imread('test_images/test' + str(i+1) + '.jpg')
+#     fin = process_image(image)
 
-    mpimg.imsave('output_images/straight_lines' + str(i+1), fin)
+#     mpimg.imsave('output_images/test' + str(i+1), fin)
 
 
 # Import everything needed to edit/save/watch video clips
@@ -310,7 +313,7 @@ from IPython.display import HTML
 
 white_output = 'output_video/testing_he_pl.mp4'
 
-clip1 = VideoFileClip("project_video.mp4").subclip(24,39)
+clip1 = VideoFileClip("project_video.mp4")
 # VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,5)
 white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 

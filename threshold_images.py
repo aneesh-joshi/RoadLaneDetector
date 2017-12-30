@@ -60,19 +60,24 @@ ksize = 3 # Choose a larger odd number to smooth gradient measurements
 
 
 
-for i in range(2):
-    image = mpimg.imread('undistorted_images/straight_lines' + str(i+1))
+for i in range(8):
+    image = mpimg.imread('warped_images/test' + str(i+1))
+    lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    luv = cv2.cvtColor(image, cv2.COLOR_RGB2LUV)
+
 
     s_channel = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)[:, :, 2]
     l_channel = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)[:, :, 0]
 
     gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(20, 100))
-    grady = abs_sobel_thresh(image, orient='y', sobel_kernel=ksize, thresh=(50, 100))
+    grady = abs_sobel_thresh(image, orient='y', sobel_kernel=ksize, thresh=(20, 100))
+
+
     mag_binary = mag_thresh(image, sobel_kernel=ksize, mag_thresh=(30, 100))
     dir_binary = dir_threshold(image, sobel_kernel=ksize, thresh=(0.7, 1.3))
 
     gradx_s = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(20, 100))
-    grady_s = abs_sobel_thresh(s_channel, orient='y', sobel_kernel=ksize, thresh=(50, 100))
+    grady_s = abs_sobel_thresh(s_channel, orient='y', sobel_kernel=ksize, thresh=(20, 100))
     mag_binary_s = mag_thresh(s_channel, sobel_kernel=ksize, mag_thresh=(30, 100))
     dir_binary_s = dir_threshold(s_channel, sobel_kernel=ksize, thresh=(0.7, 1.3))
 
@@ -86,9 +91,9 @@ for i in range(2):
 
     combined = np.zeros_like(dir_binary)
     # combined[((gradx == 1) | (grady == 1)) | ((mag_binary == 1) | (dir_binary == 1))] = 1
-    combined[((gradx == 1) | (gradx_s == 1) & (mag_binary_s == 1))] = 1
+    combined[((gradx == 1) | (gradx_s == 1) | (mag_binary_s == 1))] = 1
 
-    mpimg.imsave('thresholded_images/straight_lines' + str(i+1), combined)
+    mpimg.imsave('thresholded_images/test' + str(i+1), combined)
 
     f, axes = plt.subplots(2, 4, figsize=(20,10))
 

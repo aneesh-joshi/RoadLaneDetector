@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 
 
-for i in range(6):
-    image = mpimg.imread('thresholded_images/test' + str(i+1))
+for i in range(8):
+    image = mpimg.imread('undistorted_images/test' + str(i+1))
 
     
 
