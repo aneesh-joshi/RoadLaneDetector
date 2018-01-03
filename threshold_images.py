@@ -28,11 +28,12 @@ def mag_thresh(img, sobel_kernel=3, mag_thresh=(0, 255)):
     else:
         gray = img
         
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
-    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
-    sobelxy = np.sqrt(sobelx**2 + sobely**2)
-    scaled_sobelxy = np.uint8(sobelxy/np.max(sobelxy) * 255)
-    mask_sobel = np.zeros_like(sobelxy)
+    # sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
+    # sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
+    # sobelxy = np.sqrt(sobelx**2 + sobely**2)
+    # scaled_sobelxy = np.uint8(sobelxy/np.max(sobelxy) * 255)
+    mask_sobel = np.zeros_like(gray)
+    scaled_sobelxy = gray
     mask_sobel[(scaled_sobelxy>=mag_thresh[0]) & (scaled_sobelxy<=mag_thresh[1])] = 1
     
     return mask_sobel
@@ -64,7 +65,7 @@ for i in range(8):
     image = mpimg.imread('warped_images/test' + str(i+1))
     lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
     luv = cv2.cvtColor(image, cv2.COLOR_RGB2LUV)
-
+    hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
     s_channel = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)[:, :, 2]
     l_channel = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)[:, :, 0]
@@ -97,28 +98,39 @@ for i in range(8):
 
     f, axes = plt.subplots(2, 4, figsize=(20,10))
 
-    axes[0, 0].set_title('GRAD X')
-    axes[0, 0].imshow(gradx, cmap='gray')
+    mag_v = mag_thresh(luv[:,:,2], mag_thresh=(160, 255))
+
+    mag_b = mag_thresh(lab[:,:,2], mag_thresh=(145, 190))
+
+    mag_s = mag_thresh(hsv[:,:,1], mag_thresh=(65, 200))
 
 
-    axes[0, 1].set_title('GRAD y')
-    axes[0, 1].imshow(grady, cmap='gray')
+    combined = np.zeros_like(dir_binary)
+    combined[((mag_v==1)|(mag_b==1)) | ((mag_b==1) & (mag_s==1 ))] = 1
 
-    axes[0, 2].set_title('MAG')
-    axes[0, 2].imshow(mag_binary, cmap='gray')
+    white = mag_thresh(hsv[:,:,2], mag_thresh=(200, 255))
 
-    axes[0, 3].set_title('COMBINED')
+    axes[0, 0].set_title('la_B')
+    axes[0, 0].imshow(lab[:,:,2], cmap='gray')
+
+    axes[0, 1].set_title('S')
+    axes[0, 1].imshow(hsv[:,:,1], cmap='gray')
+
+    axes[0, 2].set_title('V')
+    axes[0, 2].imshow(hsv[:,:,2], cmap='gray')
+
+    axes[0, 3].set_title('Combined')
     axes[0, 3].imshow(combined, cmap='gray')
 
 
-    axes[1, 0].set_title('GRAD X S')
-    axes[1, 0].imshow(gradx_s, cmap='gray')
+    axes[1, 0].set_title('mag B')
+    axes[1, 0].imshow(mag_b, cmap='gray')
 
-    axes[1, 1].set_title('GRAD Y S')
-    axes[1, 1].imshow(grady_s, cmap='gray')
+    axes[1, 1].set_title('mag S')
+    axes[1, 1].imshow(mag_s, cmap='gray')
 
-    axes[1, 2].set_title('MAG S')
-    axes[1, 2].imshow(mag_binary_s, cmap='gray')
+    axes[1, 2].set_title('MAG V')
+    axes[1, 2].imshow(mag_v, cmap='gray')
 
     axes[1, 3].set_title('IMAGE')
     axes[1, 3].imshow(image, cmap='gray')

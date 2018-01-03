@@ -31,12 +31,9 @@ def mag_thresh(img, sobel_kernel=3, mag_thresh=(0, 255)):
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     else:
         gray = img
-    
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
-    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
-    sobelxy = np.sqrt(sobelx**2 + sobely**2)
-    scaled_sobelxy = np.uint8(sobelxy/np.max(sobelxy) * 255)
-    mask_sobel = np.zeros_like(sobelxy)
+
+    mask_sobel = np.zeros_like(gray)
+    scaled_sobelxy = gray
     mask_sobel[(scaled_sobelxy>=mag_thresh[0]) & (scaled_sobelxy<=mag_thresh[1])] = 1
     
     return mask_sobel
@@ -64,22 +61,38 @@ def threshold(image):
     Minv = image[1]
     image = image[0]
 
+
     ksize = 3
 
-    hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
-    s_channel = hls[:, :, 2]
+    lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    luv = cv2.cvtColor(image, cv2.COLOR_RGB2LUV)
+    hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
-    gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(20, 100))
-    
-    gradx_s = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(20, 100))
-    
-    mag_binary_s = mag_thresh(s_channel, sobel_kernel=ksize, mag_thresh=(30, 100))
-    
+    gradx_Luv = abs_sobel_thresh(luv[:,:,0], orient='x', sobel_kernel=ksize, thresh=(10, 100))
 
-    combined = np.zeros_like(gradx)
-    combined[((gradx == 1) | (gradx_s == 1) | (mag_binary_s == 1))] = 1
+    mag_Luv = mag_thresh(luv[:,:,0], mag_thresh=(200, 255))
 
-    return combined, Minv
+    mag_r = mag_thresh(image[:,:,0], mag_thresh=(200, 255))
+
+    mag_v = mag_thresh(hsv[:,:,2], mag_thresh=(200,255 ))
+
+
+
+    combined_right = np.zeros_like(mag_v)
+    combined_right[((mag_Luv==1)&(mag_r==1)&(mag_v==1)&(gradx_Luv==1)) ] = 1
+
+    mag_v = mag_thresh(luv[:,:,2], mag_thresh=(160, 255))
+    mag_b = mag_thresh(lab[:,:,2], mag_thresh=(145, 190))
+    mag_s = mag_thresh(hsv[:,:,1], mag_thresh=(65, 200))
+
+
+    combined_left = np.zeros_like(mag_v)
+    combined_left[((mag_v==1)|(mag_b==1)) | ((mag_b==1) & (mag_s==1 ))] = 1
+
+    combined_final = np.zeros_like(combined_left)
+    combined_final[(combined_left==1) | (combined_right==1)] = 1
+
+    return combined_final, Minv
 
 def warp(image):    
     src = np.float32([[  595,  450 ],
@@ -292,7 +305,8 @@ with open('undistortion_data.pkl', 'rb') as f:
 
 def process_image(image):
 
-    warped_image, Minv = threshold(warp(undistort(image, undistortion_data)))
+    just_warped= warp(undistort(image, undistortion_data))
+    warped_image, Minv = threshold(just_warped)
 
     fin_image, curv_left, curv_right, offset_dist = get_curvature(warped_image, Minv, image)
     fin_image = cv2.putText(fin_image, 'left ROC:' + str(np.round(curv_left)) + 'm', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)    
@@ -303,7 +317,8 @@ def process_image(image):
 # for i in range(8):
 #     image = mpimg.imread('test_images/test' + str(i+1) + '.jpg')
 #     fin = process_image(image)
-
+#     plt.imshow(fin)
+#     plt.show()
 #     mpimg.imsave('output_images/test' + str(i+1), fin)
 
 
@@ -311,9 +326,9 @@ def process_image(image):
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
 
-white_output = 'output_video/testing_he_pl.mp4'
+white_output = 'output_video/challenge_final_pl.mp4'
 
-clip1 = VideoFileClip("project_video.mp4")
+clip1 = VideoFileClip("challenge_video.mp4").subclip(2,15)
 # VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,5)
 white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 

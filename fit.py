@@ -5,7 +5,7 @@ import cv2
 
 
 for i in range(6):
-	img = mpimg.imread('warped_images/test' + str(i+1))
+	img = mpimg.imread('thresholded_images/test' + str(i+1))
 
 	print(img.shape)
 
